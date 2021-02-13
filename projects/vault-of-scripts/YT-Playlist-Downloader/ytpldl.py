@@ -47,9 +47,22 @@ class YouTubePlaylistDownloader():
         url = track_url if track_url else self.urls[offset]
 
         target = YouTube(url)
+        audio_url = target.streams.get_audio_only().url
+        try:
+            audio_url = [i for i in target.streams if i.type == 'audio'][-1].url
+        except Exception:
+            pass
+
+        artist = target.author
+        try:
+            artist = target.metadata.metadata[0]['Artist']
+        except Exception:
+            pass
         data = {
             'title': target.title,
             'download_url': target.streams.get_highest_resolution().url,
+            'audio_url': audio_url,
+            'artist': artist,
             'thumbnail': target.thumbnail_url
         }
 

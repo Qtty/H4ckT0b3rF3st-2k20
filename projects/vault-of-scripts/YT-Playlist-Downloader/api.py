@@ -1,10 +1,10 @@
 from flask_restful import Resource, Api
 from flask import Flask, request, send_file
 from ytpldl import YouTubePlaylistDownloader
+from os import urandom
+from pydub import AudioSegment
 from time import sleep
 import requests
-from os import urandom
-from moviepy.editor import VideoFileClip
 
 
 app = Flask(__name__)
@@ -65,7 +65,7 @@ class YTTrackChecker(Resource):
 
         if 'track_url' in data.keys():
             try:
-                details = YouTubePlaylistDownloader().get_download_details(track_url=data['track_url'])
+                details = YouTubePlaylistDownloader(skip=True).get_download_details(track_url=data['track_url'])
                 details['is_track'] = True
 
                 return details
@@ -81,18 +81,14 @@ class MP3Converter(Resource):
         ''' Convert an MP4 file to an MP3 file and send it back in the response '''
 
         data = request.args
-        if 'download_url' in data.keys():
-            r = requests.get(data['download_url'], allow_redirects=True)
+        if 'audio_url' in data.keys() and 'artist' in data.keys():
+            r = requests.get(data['audio_url'], allow_redirects=True)
             filename = urandom(16).hex()
-            with open(f'/tmp/{filename}.mp4', 'wb') as f:
+            with open(f'/tmp/{filename}', 'wb') as f:
                 f.write(r.content)
 
-            videoclip = VideoFileClip(f'/tmp/{filename}.mp4')
-            audioclip = videoclip.audio
-            audioclip.write_audiofile(f'/tmp/{filename}.mp3')
-
-            audioclip.close()
-            videoclip.close()
+            sound = AudioSegment.from_file(f'/tmp/{filename}')
+            sound.export(f'/tmp/{filename}.mp3', format='mp3', bitrate='160k', tags={'artist': data['artist'], 'album': filename})
 
             return send_file(f'/tmp/{filename}.mp3', attachment_filename='download.mp3')
 
