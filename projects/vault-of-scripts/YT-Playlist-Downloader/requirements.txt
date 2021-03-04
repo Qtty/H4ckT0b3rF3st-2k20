@@ -13,14 +13,12 @@ itsdangerous
 Jinja2
 MarkupSafe
 mccabe
-moviepy
 numpy
 Pillow
 proglog
 pycodestyle
 pyflakes
 pytube
-pytube3
 pytz
 requests
 six

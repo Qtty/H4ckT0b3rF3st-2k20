@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:percent_indicator/percent_indicator.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:filesize/filesize.dart';
-import 'dart:io';
 
 class PlaylistDownload extends StatefulWidget {
   @override
@@ -26,8 +24,11 @@ class _PlaylistDownloadState extends State<PlaylistDownload> {
     Map data;
 
     this.syncStarted = true;
+    print(this.length);
     for (var offset = 0; offset < this.length; offset++) {
+      print('got in');
       data = await this.api.getTrack(offset);
+      print(data);
       if (data != null) {
         data['progress'] = 0.0;
         data['progress_indicator'] = ' ';
@@ -40,27 +41,25 @@ class _PlaylistDownloadState extends State<PlaylistDownload> {
     }
   }
 
-  Future<void> downloadFile(
-      String uri, String fileName, int index, bool isMp3) async {
+  Future<void> downloadFile(int index, bool isMp3) async {
     if (await Permission.storage.request().isGranted &&
         !this.tracks[index]['downloaded'] &&
         !this.tracks[index]['is_downloading']) {
-      String savePath = await getFilePath(fileName, isMp3);
+      String savePath = await getFilePath(this.tracks[index]['title'], isMp3);
       print('Download path is: $savePath');
 
       Dio dio = Dio();
 
       this.tracks[index]['is_downloading'] = true;
 
-      Map<String, String> queryData = {};
-      String targetUrl = uri;
+      Map<String, String> queryData = {'artist': this.tracks[index]['artist']};
+      String targetUrl = this.tracks[index]['download_url'];
       if (isMp3) {
-        queryData = {
-          'download_url': uri,
-        };
+        queryData['audio_url'] = this.tracks[index]['audio_url'];
         targetUrl = '${this.api.apiEndpoint}/convert';
       }
 
+      print(queryData);
       await dio.download(
         targetUrl,
         savePath,
@@ -81,6 +80,7 @@ class _PlaylistDownloadState extends State<PlaylistDownload> {
         setState(() {
           this.tracks[index]['is_downloading'] = false;
           if (this.tracks[index]['progress'] == 1) {
+            this.tracks[index]['progress_indicator'] = 'Done!';
             this.tracks[index]['downloaded'] = true;
           }
         });
@@ -90,10 +90,10 @@ class _PlaylistDownloadState extends State<PlaylistDownload> {
 
   Future<String> getFilePath(String uniqueFileName, bool isMp3) async {
     String path;
-    Directory downloadDirectory = await getExternalStorageDirectory();
 
     String extension = isMp3 ? 'mp3' : 'mp4';
-    path = '${downloadDirectory.path}/$uniqueFileName.$extension';
+    uniqueFileName = uniqueFileName.replaceAll(r'/', '');
+    path = '/storage/emulated/0/Download/$uniqueFileName.$extension';
 
     return path;
   }
@@ -147,8 +147,6 @@ class _PlaylistDownloadState extends State<PlaylistDownload> {
                           }
 
                           await this.downloadFile(
-                            this.tracks[i]['download_url'],
-                            this.tracks[i]['title'],
                             i,
                             false,
                           );
@@ -158,7 +156,7 @@ class _PlaylistDownloadState extends State<PlaylistDownload> {
                         children: [
                           Icon(Icons.file_download),
                           SizedBox(
-                            width: 3,
+                            width: 1,
                           ),
                           Text('Download All in MP4'),
                         ],
@@ -174,8 +172,6 @@ class _PlaylistDownloadState extends State<PlaylistDownload> {
                           }
 
                           await this.downloadFile(
-                            this.tracks[i]['download_url'],
-                            this.tracks[i]['title'],
                             i,
                             true,
                           );
@@ -185,7 +181,7 @@ class _PlaylistDownloadState extends State<PlaylistDownload> {
                         children: [
                           Icon(Icons.audiotrack),
                           SizedBox(
-                            width: 3,
+                            width: 1,
                           ),
                           Text('Download All in MP3'),
                         ],
@@ -230,8 +226,6 @@ class _PlaylistDownloadState extends State<PlaylistDownload> {
                             icon: Icon(Icons.file_download),
                             onPressed: () {
                               this.downloadFile(
-                                this.tracks[index]['download_url'],
-                                this.tracks[index]['title'],
                                 index,
                                 false,
                               );
@@ -240,12 +234,14 @@ class _PlaylistDownloadState extends State<PlaylistDownload> {
                           IconButton(
                             icon: Icon(Icons.audiotrack),
                             onPressed: () {
-                              this.downloadFile(
-                                this.tracks[index]['download_url'],
-                                this.tracks[index]['title'],
-                                index,
-                                true,
-                              );
+                              setState(() {
+                                this.tracks[index]['progress_indicator'] =
+                                    'Converting';
+                                this.downloadFile(
+                                  index,
+                                  true,
+                                );
+                              });
                             },
                           )
                         ],

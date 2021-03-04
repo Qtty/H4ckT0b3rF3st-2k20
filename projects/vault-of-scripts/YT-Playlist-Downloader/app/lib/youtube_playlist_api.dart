@@ -2,7 +2,7 @@ import 'package:http/http.dart';
 import 'dart:convert';
 
 class YoutubePlaylistAPI {
-  String apiEndpoint = 'http://192.168.1.38:5000';
+  String apiEndpoint = 'http://138.68.64.113:5000';
   String url;
 
   YoutubePlaylistAPI({this.url});
